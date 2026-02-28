@@ -67,7 +67,7 @@ const LOCATION_MULTIPLIER: Record<string, number> = {
   "London": 1.3,
   "Berlin": 1.05,
   "Bangalore": 0.55,
-  "Toronto": 1.05,
+  "Toronto": 0.9,
   "Remote": 1.15,
   "Other": 1.0,
 };
@@ -122,8 +122,13 @@ const SKILL_BONUS: Record<string, number> = {
 export function predictSalary(input: PredictionInput): PredictionResult {
   const expKey = getExperienceKey(input.experience);
   const expMult = EXPERIENCE_MULTIPLIER[expKey] ?? 1;
-  const eduMult = EDUCATION_MULTIPLIER[input.education] ?? 1;
+  let eduMult = EDUCATION_MULTIPLIER[input.education] ?? 1;
   const roleMult = ROLE_MULTIPLIER[input.jobRole] ?? 1;
+
+  // Frontend Developer: cap education bonus (Master's doesn't boost as much)
+  if (input.jobRole === "Frontend Developer" && eduMult > 1.12) {
+    eduMult = 1.12;
+  }
   const locMult = LOCATION_MULTIPLIER[input.location] ?? 1;
   const compMult = COMPANY_MULTIPLIER[input.companyType] ?? 1;
   const indMult = INDUSTRY_MULTIPLIER[input.industry] ?? 1;
@@ -141,6 +146,8 @@ export function predictSalary(input: PredictionInput): PredictionResult {
     salary = Math.min(salary, 95000);
   } else if (input.experience <= 2) {
     salary = Math.min(salary, 110000) * 0.75;
+  } else if (input.experience <= 3) {
+    salary = Math.min(salary, 115000) * 0.70;
   }
 
   // Add some controlled randomness for realism
@@ -155,9 +162,9 @@ export function predictSalary(input: PredictionInput): PredictionResult {
   if (input.experience <= 1) {
     confidence = 50 + input.skills.length * 1.5;
   } else if (input.experience <= 2) {
-    confidence = 58 + input.skills.length * 1.5;
+    confidence = 55 + input.skills.length * 1.5;
   } else if (input.experience <= 3) {
-    confidence = 65 + input.skills.length * 1.5;
+    confidence = 58 + input.skills.length * 1.5;
   } else if (input.experience <= 5) {
     confidence = 78 + input.skills.length * 1.5;
   } else {
