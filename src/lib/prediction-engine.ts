@@ -134,29 +134,53 @@ export function predictSalary(input: PredictionInput): PredictionResult {
   const skillBonus = input.skills.reduce((sum, skill) => sum + (SKILL_BONUS[skill] ?? 1500), 0);
   salary += skillBonus;
 
+  // Sanity caps for junior profiles (industry-standard reality check)
+  if (input.experience <= 1 && input.education === "High School") {
+    salary = Math.min(salary, 70000) * 0.65;
+  } else if (input.experience <= 1) {
+    salary = Math.min(salary, 95000);
+  }
+
   // Add some controlled randomness for realism
   const noise = 1 + (Math.random() * 0.04 - 0.02);
   salary *= noise;
 
   const predicted = Math.round(salary / 100) * 100;
   const variance = 0.12 + Math.random() * 0.06;
-  const confidence = Math.min(95, 70 + input.skills.length * 2 + (input.experience > 3 ? 8 : 0));
+
+  // Realistic confidence based on experience level
+  let confidence: number;
+  if (input.experience <= 1) {
+    confidence = 50 + input.skills.length * 1.5;
+  } else if (input.experience <= 3) {
+    confidence = 65 + input.skills.length * 1.5;
+  } else if (input.experience <= 5) {
+    confidence = 78 + input.skills.length * 1.5;
+  } else {
+    confidence = 85 + input.skills.length * 1;
+  }
+  confidence = Math.min(95, Math.round(confidence));
+
+  // Realistic factor impacts — cap experience impact for juniors
+  const expImpact = input.experience <= 1
+    ? Math.min((expMult - 1) * 100, 10)
+    : (expMult - 1) * 100;
 
   const factors = [
-    { name: "Experience", impact: (expMult - 1) * 100 },
+    { name: "Experience", impact: expImpact },
     { name: "Education", impact: (eduMult - 1) * 100 },
     { name: "Job Role", impact: (roleMult - 1) * 100 },
     { name: "Location", impact: (locMult - 1) * 100 },
     { name: "Company Type", impact: (compMult - 1) * 100 },
     { name: "Industry", impact: (indMult - 1) * 100 },
-    { name: "Skills", impact: (skillBonus / salary) * 100 },
+    { name: "Skills", impact: salary > 0 ? (skillBonus / salary) * 100 : 0 },
   ].sort((a, b) => Math.abs(b.impact) - Math.abs(a.impact));
 
   return {
     predictedSalary: predicted,
     minSalary: Math.round((predicted * (1 - variance)) / 100) * 100,
     maxSalary: Math.round((predicted * (1 + variance)) / 100) * 100,
-    confidence: Math.round(confidence),
+    confidence,
     factors,
   };
 }
