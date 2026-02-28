@@ -1,5 +1,5 @@
 // Client-side salary prediction engine
-// Simulates an ML model using weighted factors based on real-world salary data patterns
+// Uses role-specific base salaries with additive bonus factors based on real-world salary data
 
 export interface PredictionInput {
   skills: string[];
@@ -20,85 +20,117 @@ export interface PredictionResult {
   factors: { name: string; impact: number }[];
 }
 
-const BASE_SALARY = 45000;
-
-const EXPERIENCE_MULTIPLIER: Record<string, number> = {
-  "0-1": 1.0,
-  "1-3": 1.25,
-  "3-5": 1.55,
-  "5-8": 1.9,
-  "8-12": 2.4,
-  "12+": 3.0,
+// Role-specific base salaries (industry standard)
+const BASE_SALARY: Record<string, number> = {
+  "Frontend Developer": 65000,
+  "Backend Developer": 70000,
+  "Full Stack Developer": 75000,
+  "Software Engineer": 70000,
+  "Senior Software Engineer": 95000,
+  "Staff Engineer": 120000,
+  "Principal Engineer": 140000,
+  "ML Engineer": 90000,
+  "Data Scientist": 85000,
+  "AI Engineer": 95000,
+  "Data Engineer": 88000,
+  "DevOps Engineer": 85000,
+  "Cloud Engineer": 90000,
+  "Site Reliability Engineer": 95000,
+  "Mobile App Developer": 70000,
+  "Game Developer": 72000,
+  "QA Engineer": 60000,
+  "Automation Engineer": 70000,
+  "Security Engineer": 95000,
+  "Blockchain Developer": 90000,
 };
 
-const EDUCATION_MULTIPLIER: Record<string, number> = {
-  "High School": 0.75,
-  "Associate": 0.85,
-  "Bachelor's": 1.0,
-  "Master's": 1.25,
-  "PhD": 1.45,
-  "Bootcamp": 0.9,
+const DEFAULT_BASE_SALARY = 70000;
+
+const EXPERIENCE_BONUS: Record<string, number> = {
+  "0-1": 0.0,
+  "1-3": 0.10,
+  "3-5": 0.25,
+  "5-8": 0.45,
+  "8-12": 0.70,
+  "12+": 1.0,
 };
 
-const ROLE_MULTIPLIER: Record<string, number> = {
-  "Software Engineer": 1.15,
-  "Data Scientist": 1.25,
-  "Product Manager": 1.2,
-  "DevOps Engineer": 1.18,
-  "UX Designer": 1.0,
-  "ML Engineer": 1.35,
-  "Frontend Developer": 1.05,
-  "Backend Developer": 1.12,
-  "Full Stack Developer": 1.15,
-  "Data Analyst": 0.95,
-  "QA Engineer": 0.9,
-  "Mobile Developer": 1.1,
+const EDUCATION_BONUS: Record<string, number> = {
+  "High School": -0.10,
+  "Associate": -0.05,
+  "Bachelor's": 0.0,
+  "Master's": 0.12,
+  "PhD": 0.22,
+  "Bootcamp": -0.05,
 };
 
-const LOCATION_MULTIPLIER: Record<string, number> = {
-  "San Francisco": 1.5,
-  "New York": 1.4,
-  "Seattle": 1.35,
-  "Austin": 1.15,
-  "Chicago": 1.1,
-  "Denver": 1.1,
-  "Boston": 1.3,
-  "Los Angeles": 1.25,
-  "London": 1.3,
-  "Berlin": 1.05,
-  "Bangalore": 0.55,
-  "Toronto": 0.9,
-  "Remote": 1.15,
-  "Other": 1.0,
+const ROLE_BONUS: Record<string, number> = {
+  "Frontend Developer": 0.0,
+  "Backend Developer": 0.05,
+  "Full Stack Developer": 0.08,
+  "Software Engineer": 0.05,
+  "Senior Software Engineer": 0.10,
+  "Staff Engineer": 0.12,
+  "Principal Engineer": 0.15,
+  "ML Engineer": 0.15,
+  "Data Scientist": 0.12,
+  "AI Engineer": 0.18,
+  "Data Engineer": 0.10,
+  "DevOps Engineer": 0.08,
+  "Cloud Engineer": 0.10,
+  "Site Reliability Engineer": 0.12,
+  "Mobile App Developer": 0.05,
+  "Game Developer": 0.03,
+  "QA Engineer": 0.0,
+  "Automation Engineer": 0.05,
+  "Security Engineer": 0.12,
+  "Blockchain Developer": 0.10,
 };
 
-const COMPANY_MULTIPLIER: Record<string, number> = {
-  "Startup": 0.9,
-  "Mid-size": 1.05,
-  "Enterprise": 1.2,
-  "FAANG": 1.6,
-  "Consulting": 1.1,
-  "Freelance": 0.95,
+const LOCATION_BONUS: Record<string, number> = {
+  "San Francisco": 0.45,
+  "New York": 0.35,
+  "Seattle": 0.30,
+  "Austin": 0.12,
+  "Chicago": 0.08,
+  "Denver": 0.08,
+  "Boston": 0.25,
+  "Los Angeles": 0.20,
+  "London": 0.25,
+  "Berlin": 0.05,
+  "Bangalore": -0.40,
+  "Toronto": -0.10,
+  "Remote": 0.10,
+  "Other": 0.0,
 };
 
-const INDUSTRY_MULTIPLIER: Record<string, number> = {
-  "Tech": 1.2,
-  "Finance": 1.25,
-  "Healthcare": 1.05,
-  "E-commerce": 1.1,
-  "Gaming": 1.05,
-  "Education": 0.85,
-  "Government": 0.9,
-  "AI/ML": 1.35,
+const COMPANY_BONUS: Record<string, number> = {
+  "Startup": -0.05,
+  "Mid-size": 0.05,
+  "Enterprise": 0.15,
+  "FAANG": 0.50,
+  "Consulting": 0.08,
+  "Freelance": -0.05,
 };
 
-const WORK_MODE_MULTIPLIER: Record<string, number> = {
-  "Remote": 1.05,
-  "Onsite": 1.0,
-  "Hybrid": 1.02,
+const INDUSTRY_BONUS: Record<string, number> = {
+  "Tech": 0.15,
+  "Finance": 0.20,
+  "Healthcare": 0.05,
+  "E-commerce": 0.08,
+  "Gaming": 0.05,
+  "Education": -0.10,
+  "Government": -0.08,
+  "AI/ML": 0.25,
 };
 
-const SKILL_BONUS: Record<string, number> = {
+const WORK_MODE_BONUS: Record<string, number> = {
+  "Remote": 0.03,
+  "Onsite": 0.0,
+  "Hybrid": 0.01,
+};
+
+const SKILL_VALUE: Record<string, number> = {
   "Python": 3000,
   "JavaScript": 2500,
   "TypeScript": 3500,
@@ -120,29 +152,43 @@ const SKILL_BONUS: Record<string, number> = {
 };
 
 export function predictSalary(input: PredictionInput): PredictionResult {
+  const role = input.jobRole.trim();
+  const baseSalary = BASE_SALARY[role] ?? DEFAULT_BASE_SALARY;
+
   const expKey = getExperienceKey(input.experience);
-  const expMult = EXPERIENCE_MULTIPLIER[expKey] ?? 1;
-  let eduMult = EDUCATION_MULTIPLIER[input.education] ?? 1;
-  const roleMult = ROLE_MULTIPLIER[input.jobRole] ?? 1;
+  const expBonus = EXPERIENCE_BONUS[expKey] ?? 0;
+  let eduBonus = EDUCATION_BONUS[input.education] ?? 0;
+  const roleBonus = ROLE_BONUS[role] ?? 0;
+  let locBonus = LOCATION_BONUS[input.location] ?? 0;
+  const compBonus = COMPANY_BONUS[input.companyType] ?? 0;
+  let indBonus = INDUSTRY_BONUS[input.industry] ?? 0;
+  const workBonus = WORK_MODE_BONUS[input.workMode] ?? 0;
 
   // Frontend Developer: cap education bonus (Master's doesn't boost as much)
-  if (input.jobRole === "Frontend Developer" && eduMult > 1.12) {
-    eduMult = 1.12;
+  if (role === "Frontend Developer" && eduBonus > 0.12) {
+    eduBonus = 0.12;
   }
-  let locMult = LOCATION_MULTIPLIER[input.location] ?? 1;
-  const compMult = COMPANY_MULTIPLIER[input.companyType] ?? 1;
-  let indMult = INDUSTRY_MULTIPLIER[input.industry] ?? 1;
-  const workMult = WORK_MODE_MULTIPLIER[input.workMode] ?? 1;
 
   // Cap bonuses for junior profiles (≤2 years)
   if (input.experience <= 2) {
-    locMult = Math.min(locMult, 1.12);
-    indMult = Math.min(indMult, 1.15);
+    locBonus = Math.min(locBonus, 0.12);
+    indBonus = Math.min(indBonus, 0.15);
   }
 
-  let salary = BASE_SALARY * expMult * eduMult * roleMult * locMult * compMult * indMult * workMult;
+  // Additive bonus formula: base * (1 + sum of bonuses)
+  let salary = baseSalary * (
+    1 +
+    expBonus +
+    eduBonus +
+    roleBonus +
+    locBonus +
+    compBonus +
+    indBonus +
+    workBonus
+  );
 
-  let skillBonus = input.skills.reduce((sum, skill) => sum + (SKILL_BONUS[skill] ?? 1500), 0);
+  // Skill bonus (additive flat values)
+  let skillBonus = input.skills.reduce((sum, skill) => sum + (SKILL_VALUE[skill] ?? 1500), 0);
   if (input.experience <= 2) {
     skillBonus = Math.min(skillBonus, salary * 0.15);
   }
@@ -181,18 +227,18 @@ export function predictSalary(input: PredictionInput): PredictionResult {
   }
   confidence = Math.min(95, Math.round(confidence));
 
-  // Realistic factor impacts — cap experience impact for juniors
+  // Factor impacts (percentage contribution)
   const expImpact = input.experience <= 1
-    ? Math.min((expMult - 1) * 100, 10)
-    : (expMult - 1) * 100;
+    ? Math.min(expBonus * 100, 10)
+    : expBonus * 100;
 
   const factors = [
     { name: "Experience", impact: expImpact },
-    { name: "Education", impact: (eduMult - 1) * 100 },
-    { name: "Job Role", impact: (roleMult - 1) * 100 },
-    { name: "Location", impact: (locMult - 1) * 100 },
-    { name: "Company Type", impact: (compMult - 1) * 100 },
-    { name: "Industry", impact: (indMult - 1) * 100 },
+    { name: "Education", impact: eduBonus * 100 },
+    { name: "Job Role", impact: roleBonus * 100 },
+    { name: "Location", impact: locBonus * 100 },
+    { name: "Company Type", impact: compBonus * 100 },
+    { name: "Industry", impact: indBonus * 100 },
     { name: "Skills", impact: salary > 0 ? (skillBonus / salary) * 100 : 0 },
   ].sort((a, b) => Math.abs(b.impact) - Math.abs(a.impact));
 
@@ -214,10 +260,10 @@ function getExperienceKey(years: number): string {
   return "12+";
 }
 
-export const SKILLS_OPTIONS = Object.keys(SKILL_BONUS);
-export const EDUCATION_OPTIONS = Object.keys(EDUCATION_MULTIPLIER);
-export const ROLE_OPTIONS = Object.keys(ROLE_MULTIPLIER);
-export const LOCATION_OPTIONS = Object.keys(LOCATION_MULTIPLIER);
-export const COMPANY_OPTIONS = Object.keys(COMPANY_MULTIPLIER);
-export const INDUSTRY_OPTIONS = Object.keys(INDUSTRY_MULTIPLIER);
-export const WORK_MODE_OPTIONS = Object.keys(WORK_MODE_MULTIPLIER);
+export const SKILLS_OPTIONS = Object.keys(SKILL_VALUE);
+export const EDUCATION_OPTIONS = Object.keys(EDUCATION_BONUS);
+export const ROLE_OPTIONS = Object.keys(BASE_SALARY);
+export const LOCATION_OPTIONS = Object.keys(LOCATION_BONUS);
+export const COMPANY_OPTIONS = Object.keys(COMPANY_BONUS);
+export const INDUSTRY_OPTIONS = Object.keys(INDUSTRY_BONUS);
+export const WORK_MODE_OPTIONS = Object.keys(WORK_MODE_BONUS);
