@@ -139,6 +139,8 @@ export function predictSalary(input: PredictionInput): PredictionResult {
     salary = Math.min(salary, 70000) * 0.65;
   } else if (input.experience <= 1) {
     salary = Math.min(salary, 95000);
+  } else if (input.experience <= 2) {
+    salary = Math.min(salary, 110000) * 0.75;
   }
 
   // Add some controlled randomness for realism
@@ -152,6 +154,8 @@ export function predictSalary(input: PredictionInput): PredictionResult {
   let confidence: number;
   if (input.experience <= 1) {
     confidence = 50 + input.skills.length * 1.5;
+  } else if (input.experience <= 2) {
+    confidence = 58 + input.skills.length * 1.5;
   } else if (input.experience <= 3) {
     confidence = 65 + input.skills.length * 1.5;
   } else if (input.experience <= 5) {
