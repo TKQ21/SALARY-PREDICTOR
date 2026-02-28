@@ -129,14 +129,23 @@ export function predictSalary(input: PredictionInput): PredictionResult {
   if (input.jobRole === "Frontend Developer" && eduMult > 1.12) {
     eduMult = 1.12;
   }
-  const locMult = LOCATION_MULTIPLIER[input.location] ?? 1;
+  let locMult = LOCATION_MULTIPLIER[input.location] ?? 1;
   const compMult = COMPANY_MULTIPLIER[input.companyType] ?? 1;
-  const indMult = INDUSTRY_MULTIPLIER[input.industry] ?? 1;
+  let indMult = INDUSTRY_MULTIPLIER[input.industry] ?? 1;
   const workMult = WORK_MODE_MULTIPLIER[input.workMode] ?? 1;
+
+  // Cap bonuses for junior profiles (≤2 years)
+  if (input.experience <= 2) {
+    locMult = Math.min(locMult, 1.12);
+    indMult = Math.min(indMult, 1.15);
+  }
 
   let salary = BASE_SALARY * expMult * eduMult * roleMult * locMult * compMult * indMult * workMult;
 
-  const skillBonus = input.skills.reduce((sum, skill) => sum + (SKILL_BONUS[skill] ?? 1500), 0);
+  let skillBonus = input.skills.reduce((sum, skill) => sum + (SKILL_BONUS[skill] ?? 1500), 0);
+  if (input.experience <= 2) {
+    skillBonus = Math.min(skillBonus, salary * 0.15);
+  }
   salary += skillBonus;
 
   // Sanity caps for junior profiles (industry-standard reality check)
