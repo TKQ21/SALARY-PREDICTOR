@@ -161,7 +161,9 @@ export default function Landing() {
       {/* Footer */}
       <footer className="border-t border-border py-8 px-4">
         <div className="container mx-auto text-center text-sm text-muted-foreground">
-          © 2026 SalaryVision AI. All rights reserved.
+        © 2026 Mohd Kaif. All rights reserved.
+          <br />
+          <span className="text-xs opacity-60">Built with AI assistance</span>
         </div>
       </footer>
     </div>
